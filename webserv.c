@@ -142,7 +142,7 @@ int main (int argc, const char *argv[])
         if (errno == ENOENT)
         {
           write(2, "errnolol\n", 3);
-
+          //why in the actual fuck does it not print both of these
           //char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
           write(2, "after response made", 20);
 
