@@ -10,7 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-const char *basic_response = "HTTP-Version: HTTP/1.0 200 OK\nContent-Length: 41\nContent-Type: text/html\n\n<html><head><title>It wokrs</head></html>";
+const char *basic_response = "HTTP-Version: HTTP/1.0 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It wokrs</title></head><body><p>kinda works</p></body></html>";
 
 const char *response_template = "HTTP-Version: HTTP/1.0 %s\nContent-Length: %ld\nContent-Type: %s\n\n%s";
 const char *request_template = "%s %s HTTP/%s\n%s";
@@ -34,8 +34,6 @@ char *format_response(int response_code, char *response_msg, char *content_type,
 
 char *basic_html_response(char *status, char *input_string)
 {
-  write(2, "in basic html resposne\n", 20);
-
   char *response_output = malloc(8000);
   char html_output[8000];
   sprintf(html_output, html_template, input_string);
@@ -43,24 +41,28 @@ char *basic_html_response(char *status, char *input_string)
   return response_output;
 
 }
-//currently just copied from the given tcp source files
+
+//currently mostly copied from the given tcp source files
 int main (int argc, const char *argv[])
 {
   int sd, new_sd;
+  struct sockaddr_in name, cli_name;
+  int sock_opt_val = 1;
+  socklen_t cli_len;
+
   if (argv[1] == NULL)
   {
     printf("%s\n", "webserv requires a port number, correct usage:\n./webserv port-number");
     exit(1);
   }
+
   int port = atoi(argv[1]);
   if (port < 5000 || port > 65536)
   {
     printf("%s\n", "provided port number is too high, must be in range 5000-65536");
     exit(1);
   }
-  struct sockaddr_in name, cli_name;
-  int sock_opt_val = 1;
-  socklen_t cli_len;
+
 
   //should dynamically allocate this or better manage reading multiple times
   char data[8000]; 
@@ -93,6 +95,7 @@ int main (int argc, const char *argv[])
   for (;;) 
   {
     cli_len = sizeof (cli_name);
+
     new_sd = accept (sd, (struct sockaddr *) &cli_name, &cli_len);
     printf ("Assigning new socket descriptor:  %d\n", new_sd);
 
@@ -106,9 +109,9 @@ int main (int argc, const char *argv[])
     {   
 
       //set root directory to the cwd
-      char dir[1000];
-      getcwd(dir, 1000);
-      chroot(dir);
+      //char dir[1000];
+      //getcwd(dir, 1000);
+      //chroot(dir);
 
 
       char request[8000];
@@ -121,37 +124,39 @@ int main (int argc, const char *argv[])
       read (new_sd, &data, 8000); 
 
       sscanf(data, request_template, method, request, version);
+      fprintf(stderr, method);
+
       if (strcmp(method, "GET") != 0)
       {
-          fprintf(stderr,"wasn't a get");
+          fprintf(stderr, "not a get");
 
           char *response = basic_html_response(HTTP_NOTIMPLEMENTED, "Error - Method not supported");
           write(new_sd, response, strlen(response));
           close(new_sd);
           exit(0);
       }
-      fprintf(stderr, "request is: %s\nversion is: %s\n\n\n",
-        request, version);
-      fprintf(stderr, "wtfffff");
 
       struct stat statbuf;
       if (stat(request, &statbuf) < 0)
       {
-        write(2, "after stat\n", 20);
+        //if (errno == ENOENT)
+        //{
 
-        if (errno == ENOENT)
-        {
-          write(2, "errnolol\n", 3);
-          //why in the actual fuck does it not print both of these
-          //char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
-          write(2, "after response made", 20);
-
-          write(new_sd, basic_response, strlen(basic_response));
-          close(new_sd);
-          exit (0);
+            //char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
+          //if (write(new_sd, basic_response, strlen(basic_response)) < 0)
+          //{
+          //  perror("Write to socket failed");
+          //}
 
 
-        }
+        //}
+        fprintf(stderr, "failed stat for %s", request);
+        //perror("\nfdslkahfdlsj");
+
+        if (write (new_sd, basic_response, strlen(basic_response)) < 0)
+              perror("error writing response to socket");
+
+
 
       }
       //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
@@ -162,10 +167,7 @@ int main (int argc, const char *argv[])
 
 
       //should probably check if there's more data to read, and if there is, read it
-      printf ("Received string = %s\n", data);
       close(new_sd);
-      write(2, "hehhfdasjflj", 5);
-
       exit (0);
 
     }
