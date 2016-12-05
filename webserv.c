@@ -14,7 +14,7 @@ const char *basic_response = "HTTP-Version: HTTP/1.0 200 OK\nContent-Length: 80\
 
 const char *response_template = "HTTP-Version: HTTP/1.0 %s\nContent-Length: %ld\nContent-Type: %s\n\n%s";
 const char *request_template = "%s %s HTTP/%s\n%s";
-const char *html_template = "<html><title>webserv</title><body>%s</body></html>";
+const char *html_template = "<html><head><title>webserv</title></head><body><p>%s</p></body></html>";
 
 const char *content_plain = "text/plain";
 const char *content_html = "text/html";
@@ -37,7 +37,8 @@ char *basic_html_response(char *status, char *input_string)
   char *response_output = malloc(8000);
   char html_output[8000];
   sprintf(html_output, html_template, input_string);
-  sprintf(response_output, response_template, status, strlen(input_string), content_html, html_output);
+  sprintf(response_output, response_template, status, strlen(html_output), content_html, html_output);
+  printf("\n%s\n",response_output);
   return response_output;
 
 }
@@ -142,19 +143,19 @@ int main (int argc, const char *argv[])
         //if (errno == ENOENT)
         //{
 
-            //char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
-          //if (write(new_sd, basic_response, strlen(basic_response)) < 0)
-          //{
-          //  perror("Write to socket failed");
-          //}
+            char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
+            if (write(new_sd, response, strlen(basic_response)) < 0)
+            {
+              perror("Write to socket failed");
+            }
 
 
         //}
         fprintf(stderr, "failed stat for %s", request);
         //perror("\nfdslkahfdlsj");
 
-        if (write (new_sd, basic_response, strlen(basic_response)) < 0)
-              perror("error writing response to socket");
+        //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
+        //      perror("error writing response to socket");
 
 
 
