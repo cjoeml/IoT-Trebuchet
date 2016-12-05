@@ -68,14 +68,14 @@ int main (int argc, const char *argv[])
   //should dynamically allocate this or better manage reading multiple times
   char data[8000]; 
   
-  if ((sd = socket (AF_INET, SOCK_STREAM, 0)) < 0) 
+  if ((sd = socket (AF_INET, SOCK_STREAM, 0)) < 0) // Create the socket here and set to sd (socket descriptor)
   {
     perror("(servConn): socket() error");
     exit (-1);
   }
 
   if (setsockopt (sd, SOL_SOCKET, SO_REUSEADDR, (char *) &sock_opt_val,
-    sizeof(sock_opt_val)) < 0) 
+    sizeof(sock_opt_val)) < 0) // setsockopt is similar to getopt in terms of creating flags
   {
     perror ("(servConn): Failed to set SO_REUSEADDR on INET socket");
     exit (-1);
@@ -85,7 +85,7 @@ int main (int argc, const char *argv[])
   name.sin_port = htons (port); // htons = host to network short -> set port
   name.sin_addr.s_addr = htonl(INADDR_ANY); // htonl = host to network long -> set address
 
-  if (bind (sd, (struct sockaddr *)&name, sizeof(name)) < 0) 
+  if (bind (sd, (struct sockaddr *)&name, sizeof(name)) < 0) // bind the socket so it may listen and accept
   {
     perror ("(servConn): bind() error");
     exit (-1);
@@ -97,7 +97,8 @@ int main (int argc, const char *argv[])
   {
     cli_len = sizeof (cli_name);
 
-    new_sd = accept (sd, (struct sockaddr *) &cli_name, &cli_len);
+    // I think that this copies sockaddr name and its contents to make new_sd
+    new_sd = accept (sd, (struct sockaddr *) &cli_name, &cli_len); 
     printf ("Assigning new socket descriptor:  %d\n", new_sd);
 
     if (new_sd < 0) 
@@ -148,7 +149,6 @@ int main (int argc, const char *argv[])
               perror("Write to socket failed");
             }
 
-
         //}
         fprintf(stderr, "failed stat for %s", request);
         //perror("\nfdslkahfdlsj");
@@ -156,14 +156,9 @@ int main (int argc, const char *argv[])
         //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
         //      perror("error writing response to socket");
 
-
-
       }
       //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
       //  perror("error writing response to socket");
-
-
-
 
 
       //should probably check if there's more data to read, and if there is, read it
