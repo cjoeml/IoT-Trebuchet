@@ -9,8 +9,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
-const char *basic_response = "HTTP-Version: HTTP/1.0 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It wokrs</title></head><body><p>kinda works</p></body></html>";
+const char *basic_response = "HTTP-Version: HTTP/1.0 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
 
 const char *response_template = "HTTP-Version: HTTP/1.0 %s\nContent-Length: %ld\nContent-Type: %s\n\n%s";
 const char *request_template = "%s %s HTTP/%s\n%s";
@@ -60,10 +61,9 @@ int main (int argc, const char *argv[])
   int port = atoi(argv[1]);
   if (port < 5000 || port > 65536)
   {
-    printf("%s\n", "provided port number is too high, must be in range 5000-65536");
+    printf("%s\n", "provided port number is not in expected range, must be in range 5000-65536");
     exit(1);
   }
-
 
   //should dynamically allocate this or better manage reading multiple times
   char data[8000]; 
@@ -81,9 +81,9 @@ int main (int argc, const char *argv[])
     exit (-1);
   }
 
-  name.sin_family = AF_INET;
-  name.sin_port = htons (port);
-  name.sin_addr.s_addr = htonl(INADDR_ANY);
+  name.sin_family = AF_INET; // socket is in family AF_INET (IPv4 protocol)
+  name.sin_port = htons (port); // htons = host to network short -> set port
+  name.sin_addr.s_addr = htonl(INADDR_ANY); // htonl = host to network long -> set address
 
   if (bind (sd, (struct sockaddr *)&name, sizeof(name)) < 0) 
   {
@@ -93,7 +93,7 @@ int main (int argc, const char *argv[])
 
   listen (sd, 5);
 
-  for (;;) 
+  while (true)
   {
     cli_len = sizeof (cli_name);
 
@@ -113,7 +113,6 @@ int main (int argc, const char *argv[])
       //char dir[1000];
       //getcwd(dir, 1000);
       //chroot(dir);
-
 
       char request[8000];
       char version[8000];
