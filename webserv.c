@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+#include <linux/limits.h>
 
 const char *basic_response = "HTTP-Version: HTTP/1.0 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
 
@@ -28,9 +29,12 @@ char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
 
 //should add a signal handler for exiting child processes.
 
-char *format_response(int response_code, char *response_msg, char *content_type, void *content, int content_length)
+char *format_response(char* status, char *content_type, void *content, int content_length)
 {
-
+  char *response_output = malloc(8000);
+  sprintf(response_output, response_template, status, content_length, content_type, content);
+  printf("\n%s\n",response_output);
+  return response_output;
 }
 
 char *basic_html_response(char *status, char *input_string)
@@ -109,23 +113,22 @@ int main (int argc, const char *argv[])
 
     if (fork () == 0) 
     {   
-
-      //set root directory to the cwd
-      //char dir[1000];
-      //getcwd(dir, 1000);
-      //chroot(dir);
-
+      char *cwd = malloc(PATH_MAX);
+      getcwd(cwd, PATH_MAX);
       char request[8000];
       char version[8000];
       char method[100];
-      //char remaining_data[8000];
+      char *fullpath = malloc(PATH_MAX);
 
       close (sd);
 
       read (new_sd, &data, 8000); 
 
       sscanf(data, request_template, method, request, version);
-      fprintf(stderr, method);
+
+      sprintf(fullpath, "%s%s", cwd, request);
+      printf("request is %s\n", request);
+      fprintf(stderr, "%s\n", method);
 
       if (strcmp(method, "GET") != 0)
       {
@@ -138,7 +141,7 @@ int main (int argc, const char *argv[])
       }
 
       struct stat statbuf;
-      if (stat(request, &statbuf) < 0)
+      if (stat(fullpath, &statbuf) < 0)
       {
         //if (errno == ENOENT)
         //{
@@ -155,6 +158,20 @@ int main (int argc, const char *argv[])
 
         //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
         //      perror("error writing response to socket");
+
+        exit(0);
+      }
+      if (S_ISDIR(statbuf.st_mode))
+      {
+        //write(2, "should be doing something", 20);
+        dup2(new_sd, 1);
+        dup2(new_sd, 2);
+        //char *response = format_response(HTTP_OK, content_plain, NULL, 0);
+        //write(new_sd, response, strlen(response));
+        char *cmd = malloc(PATH_MAX + 6);
+        sprintf(cmd, "ls -l %s", fullpath);
+
+        system(cmd);
 
       }
       //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
