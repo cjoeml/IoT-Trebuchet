@@ -33,6 +33,7 @@ char *format_response(int response_code, char *response_msg, char *content_type,
 
 }
 
+// Something here here with content length mismatch
 char *basic_html_response(char *status, char *input_string)
 {
   char *response_output = malloc(8000);
@@ -144,6 +145,16 @@ int main (int argc, const char *argv[])
       {
       // find image here
               
+      }
+
+      // find cgi script 
+      // this isn't really right 
+      if (strstr(request[strlen(request)-4], ".cgi") != NULL)
+      {
+        char cmd[800];
+        sprintf(cmd, "sh %s", /*some full path variable to script*/);
+        system(cmd);
+
       }
 
       struct stat statbuf;
