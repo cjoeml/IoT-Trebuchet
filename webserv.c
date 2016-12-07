@@ -137,17 +137,28 @@ int main (int argc, const char *argv[])
           exit(0);
       }
 
+      // Check to see whether it is an image or not
+      if (strstr(request[strlen(request)-4], ".jpg") != NULL || 
+         strstr(request[strlen(request)-5], ".jpeg") != NULL || 
+         strstr(request[strlen(request)-4], ".gif") != NULL)
+      {
+      // find image here
+              
+      }
+
       struct stat statbuf;
       if (stat(request, &statbuf) < 0)
       {
         //if (errno == ENOENT)
         //{
 
+            // Find valid 
             char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
             if (write(new_sd, response, strlen(basic_response)) < 0)
             {
               perror("Write to socket failed");
             }
+
 
         //}
         fprintf(stderr, "failed stat for %s", request);
