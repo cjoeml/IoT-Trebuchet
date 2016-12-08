@@ -12,9 +12,9 @@
 #include <stdbool.h>
 #include <linux/limits.h>
 
-const char *basic_response = "HTTP-Version: HTTP/1.0 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
+const char *basic_response = "HTTP-Version: HTTP/1.1 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
 
-const char *response_template = "HTTP-Version: HTTP/1.0 %s\nContent-Length: %ld\nContent-Type: %s\n\n%s";
+const char *response_template = "HTTP-Version: HTTP/1.0 %s\nContent-Length: %i\nContent-Type: %s\n\n%s";
 const char *request_template = "%s %s HTTP/%s\n%s";
 const char *html_template = "<html><head><title>webserv</title></head><body><p>%s</p></body></html>";
 
@@ -42,8 +42,10 @@ char *basic_html_response(char *status, char *input_string)
   char *response_output = malloc(8000);
   char html_output[8000];
   sprintf(html_output, html_template, input_string);
+  fprintf(stderr, "html is \n%s\n", html_output);
+  
   sprintf(response_output, response_template, status, strlen(html_output), content_html, html_output);
-  printf("\n%s\n",response_output);
+  printf("\n%s\nlen: %i\n",response_output, strlen(html_output));
   return response_output;
 
 }
@@ -143,10 +145,12 @@ int main (int argc, const char *argv[])
       struct stat statbuf;
       if (stat(fullpath, &statbuf) < 0)
       {
+        //errno breaks this for some reason
         //if (errno == ENOENT)
         //{
 
             char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
+            //fprintf(stderr, "response is:\n%s\nwith a length of %i\n", response, strlen(response));
             if (write(new_sd, response, strlen(basic_response)) < 0)
             {
               perror("Write to socket failed");
@@ -163,16 +167,18 @@ int main (int argc, const char *argv[])
       }
       if (S_ISDIR(statbuf.st_mode))
       {
-        //write(2, "should be doing something", 20);
-        dup2(new_sd, 1);
-        dup2(new_sd, 2);
-        //char *response = format_response(HTTP_OK, content_plain, NULL, 0);
-        //write(new_sd, response, strlen(response));
         char *cmd = malloc(PATH_MAX + 6);
         sprintf(cmd, "ls -l %s", fullpath);
 
-        system(cmd);
+        FILE *fd = popen(cmd, "r");
 
+        char *buffer = malloc(8000);
+        fread(buffer, 1, 8000, fd);
+
+        char *response = format_response(HTTP_OK, content_plain, buffer, strlen(buffer));
+        write(new_sd, response, strlen(response));
+        fprintf(stderr, "\nthe response is:\n%s\n", response);
+        free(buffer);
       }
       //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
       //  perror("error writing response to socket");
