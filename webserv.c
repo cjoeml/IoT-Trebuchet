@@ -12,9 +12,9 @@
 #include <stdbool.h>
 #include <linux/limits.h>
 
-const char *basic_response = "HTTP-Version: HTTP/1.1 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
+//const char *basic_response = "HTTP-Version: HTTP/1.1 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
 
-const char *response_template = "HTTP-Version: HTTP/1.0 %s\nContent-Length: %i\nContent-Type: %s\n\n%s";
+const char *response_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\nContent-Type: %s\r\n\n%s";
 const char *request_template = "%s %s HTTP/%s\n%s";
 const char *html_template = "<html><head><title>webserv</title></head><body><p>%s</p></body></html>";
 
@@ -23,29 +23,26 @@ const char *content_html = "text/html";
 const char *content_gif = "image/gif";
 const char *content_jpeg = "image/jpeg";
 
-char *HTTP_OK = "200 OK";
-char *HTTP_NOTFOUND = "404 Not Found";
-char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
+const char *HTTP_OK = "200 OK";
+const char *HTTP_NOTFOUND = "404 Not Found";
+const char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
 
 //should add a signal handler for exiting child processes.
 
-char *format_response(char* status, char *content_type, void *content, int content_length)
+char *format_response(const char* status, const char *content_type, void *content, int content_length)
 {
   char *response_output = malloc(8000);
   sprintf(response_output, response_template, status, content_length, content_type, content);
-  printf("\n%s\n",response_output);
   return response_output;
 }
 
-char *basic_html_response(char *status, char *input_string)
+char *basic_html_response(const char *status, const char *input_string)
 {
-  char *response_output = malloc(8000);
+
   char html_output[8000];
   sprintf(html_output, html_template, input_string);
-  fprintf(stderr, "html is \n%s\n", html_output);
-  
-  sprintf(response_output, response_template, status, strlen(html_output), content_html, html_output);
-  printf("\n%s\nlen: %i\n",response_output, strlen(html_output));
+  char *response_output = format_response(status, content_html, html_output, strlen(html_output));
+  //printf("\n%s\nlen: %zu\n",response_output, strlen(html_output));
   return response_output;
 
 }
@@ -151,7 +148,7 @@ int main (int argc, const char *argv[])
 
             char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
             //fprintf(stderr, "response is:\n%s\nwith a length of %i\n", response, strlen(response));
-            if (write(new_sd, response, strlen(basic_response)) < 0)
+            if (write(new_sd, response, strlen(response)) < 0)
             {
               perror("Write to socket failed");
             }
@@ -167,17 +164,20 @@ int main (int argc, const char *argv[])
       }
       if (S_ISDIR(statbuf.st_mode))
       {
+        //create a string for hte ls command
         char *cmd = malloc(PATH_MAX + 6);
         sprintf(cmd, "ls -l %s", fullpath);
 
+        //run the command with popen
         FILE *fd = popen(cmd, "r");
 
+        //read output of the command into a buffer
         char *buffer = malloc(8000);
         fread(buffer, 1, 8000, fd);
 
+        //format the response headers and ls output
         char *response = format_response(HTTP_OK, content_plain, buffer, strlen(buffer));
         write(new_sd, response, strlen(response));
-        fprintf(stderr, "\nthe response is:\n%s\n", response);
         free(buffer);
       }
       //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
