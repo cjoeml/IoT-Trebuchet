@@ -107,10 +107,13 @@ void handle_img(const char *path, int new_sd, size_t size, const char *content_t
     write(new_sd, response, strlen(response));
 
 
-    if (sendfile(new_sd, fd, NULL, size) < size)
-    {
-        exit(0);
-    }
+    //if (sendfile(new_sd, fd, NULL, size) < size)
+    //{
+    //    exit(0);
+    //}
+    char* buffer = malloc(size);
+    read(fd, buffer, size);
+    write(new_sd, buffer, size);
 
     close(new_sd);
     exit(0);
