@@ -11,7 +11,6 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <limits.h>
-#include <sys/sendfile.h>
 #include <fcntl.h>
 #include <sys/wait.h>
 
@@ -114,6 +113,7 @@ void handle_img(const char *path, int new_sd, size_t size, const char *content_t
     char* buffer = malloc(size);
     read(fd, buffer, size);
     write(new_sd, buffer, size);
+    free(buffer);
 
     close(new_sd);
     exit(0);
