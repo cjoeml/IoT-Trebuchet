@@ -1,0 +1,21 @@
+set term gif
+set output 'testhist.gif'
+set title "File Type Counts"
+set xlabel "File Types"
+set ylabel "Count"
+set boxwidth 0.5
+set style fill solid
+set key off
+set yrange [0:*]
+
+plot '-' using (column(0)):2:xtic(1) ti col with boxes
+Regular 2
+Directory 4
+Link 5
+Fifo 6
+Socket 7
+Block 4
+Character 1
+
+
+e
