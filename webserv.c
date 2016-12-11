@@ -10,7 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdbool.h>
-#include <linux/limits.h>
+#include <limits.h>
 
 //const char *basic_response = "HTTP-Version: HTTP/1.1 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
 
@@ -83,19 +83,19 @@ char *handle_html(const char *path, int new_sd, size_t size)
 
 char *handle_img(const char *path, int new_sd, size_t size, const char *content_type)
 {
-    fprintf(stderr, "in handle_img");
     //run the command with popen
     FILE *fd = fopen(path, "r");
 
-    //read output of the command into a buffer
-    char *buffer = malloc(size);
-    fread(buffer, 1, size, fd);
-
-    //format the response headers and ls output
+    //format the response headersi
     char *response = format_response(HTTP_OK, content_type, NULL, size);
     write(new_sd, response, strlen(response));
-    free(buffer);
-    write(new_sd, buffer, size);
+
+    char *cmd = malloc(PATH_MAX + 6);
+    sprintf(cmd, "cat %s", path);
+
+    dup2(new_sd, 1);
+    dup2(new_sd, 2);
+
     fprintf(stderr, "response is %s", response);
 }
 
@@ -282,22 +282,19 @@ int main (int argc, const char *argv[])
         const char *content_type;
         switch (img_type){
             case JPEG:
-                fprintf(stderr, "it's a jpeg\n");
-
                 content_type = content_jpeg;
                 break;
             case GIF:
-                fprintf(stderr, "it's a gif\n");
                 content_type = content_gif;
                 break;
             default:
-                write(2, "fdkafhjdsa\n", 15);
                 fprintf(stderr, "%s\n", "something went wrong");
                 abort();
+        }
+
         write(2, "fdkafhjdsa\n", 15);
         handle_img(fullpath, new_sd, statbuf.st_size, content_type);
 
-        }
       }
       //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
       //  perror("error writing response to socket");
