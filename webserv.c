@@ -11,10 +11,15 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <sys/sendfile.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 //const char *basic_response = "HTTP-Version: HTTP/1.1 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
 
 const char *response_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\nContent-Type: %s\r\n\n%s";
+const char *header_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\nContent-Type: %s\r\n\n";
+
 const char *request_template = "%s %s HTTP/%s\n%s";
 const char *html_template = "<html><head><title>webserv</title></head><body><p>%s</p></body></html>";
 
@@ -30,13 +35,24 @@ const char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
 #define JPEG 1
 #define GIF 2
 
-//should add a signal handler for exiting child processes.
 
+//when a child process exits, handle it
+void SIGCHLD_handler(int sig)
+{
+    waitpid(-1, NULL, WNOHANG);
+}
 
 char *format_response(const char* status, const char *content_type, void *content, int content_length)
 {
   char *response_output = malloc(8000);
   sprintf(response_output, response_template, status, content_length, content_type, content);
+  return response_output;
+}
+
+char *format_header(const char* status, const char *content_type, int content_length)
+{
+  char *response_output = malloc(8000);
+  sprintf(response_output, header_template, status, content_length, content_type);
   return response_output;
 }
 
@@ -50,7 +66,7 @@ char *basic_html_response(const char *status, const char *input_string)
   return response_output;
 }
 
-char *handle_cgi(const char *cmd, int new_sd)
+void handle_cgi(const char *cmd, int new_sd)
 {
     //run the command with popen
     FILE *fd = popen(cmd, "r");
@@ -65,7 +81,7 @@ char *handle_cgi(const char *cmd, int new_sd)
     free(buffer);
 }
 
-char *handle_html(const char *path, int new_sd, size_t size)
+void handle_html(const char *path, int new_sd, size_t size)
 {
     //run the command with popen
     FILE *fd = fopen(path, "r");
@@ -81,22 +97,25 @@ char *handle_html(const char *path, int new_sd, size_t size)
 }
 
 
-char *handle_img(const char *path, int new_sd, size_t size, const char *content_type)
+void handle_img(const char *path, int new_sd, size_t size, const char *content_type)
 {
     //run the command with popen
-    FILE *fd = fopen(path, "r");
+    int fd = open(path, O_RDONLY);
 
     //format the response headersi
-    char *response = format_response(HTTP_OK, content_type, NULL, size);
+    char *response = format_header(HTTP_OK, content_type, size);
     write(new_sd, response, strlen(response));
 
-    char *cmd = malloc(PATH_MAX + 6);
-    sprintf(cmd, "cat %s", path);
 
-    dup2(new_sd, 1);
-    dup2(new_sd, 2);
+    if (sendfile(new_sd, fd, NULL, size) < size)
+    {
+        exit(0);
+    }
 
-    fprintf(stderr, "response is %s", response);
+    close(new_sd);
+    exit(0);
+
+    //fprintf(stderr, "response is %s", response);
 }
 
 int ends_in_cgi(const char *path)
@@ -141,6 +160,12 @@ int main (int argc, const char *argv[])
   struct sockaddr_in name, cli_name;
   int sock_opt_val = 1;
   socklen_t cli_len;
+
+  struct sigaction sigchld_action;
+
+  sigchld_action.sa_handler = SIGCHLD_handler;
+  sigemptyset(&sigchld_action.sa_mask);
+  sigchld_action.sa_flags = SA_RESTART;
 
   if (argv[1] == NULL)
   {
@@ -292,16 +317,10 @@ int main (int argc, const char *argv[])
                 abort();
         }
 
-        write(2, "fdkafhjdsa\n", 15);
         handle_img(fullpath, new_sd, statbuf.st_size, content_type);
 
       }
-      //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
-      //  perror("error writing response to socket");
 
-
-      //should probably check if there's more data to read, and if there is, read it
-      close(new_sd);
       exit (0);
 
     }
