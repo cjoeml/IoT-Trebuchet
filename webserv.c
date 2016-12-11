@@ -27,7 +27,11 @@ const char *HTTP_OK = "200 OK";
 const char *HTTP_NOTFOUND = "404 Not Found";
 const char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
 
+#define JPEG 1
+#define GIF 2
+
 //should add a signal handler for exiting child processes.
+
 
 char *format_response(const char* status, const char *content_type, void *content, int content_length)
 {
@@ -44,9 +48,92 @@ char *basic_html_response(const char *status, const char *input_string)
   char *response_output = format_response(status, content_html, html_output, strlen(html_output));
   //printf("\n%s\nlen: %zu\n",response_output, strlen(html_output));
   return response_output;
-
 }
 
+char *handle_cgi(const char *cmd, int new_sd)
+{
+    //run the command with popen
+    FILE *fd = popen(cmd, "r");
+
+    //read output of the command into a buffer
+    char *buffer = malloc(8000);
+    fread(buffer, 1, 8000, fd);
+
+    //format the response headers and ls output
+    char *response = format_response(HTTP_OK, content_plain, buffer, strlen(buffer));
+    write(new_sd, response, strlen(response));
+    free(buffer);
+}
+
+char *handle_html(const char *path, int new_sd, size_t size)
+{
+    //run the command with popen
+    FILE *fd = fopen(path, "r");
+
+    //read output of the command into a buffer
+    char *buffer = malloc(size);
+    fread(buffer, 1, size, fd);
+
+    //format the response headers and ls output
+    char *response = format_response(HTTP_OK, content_html, buffer, size);
+    write(new_sd, response, strlen(response));
+    free(buffer);
+}
+
+
+char *handle_img(const char *path, int new_sd, size_t size, const char *content_type)
+{
+    fprintf(stderr, "in handle_img");
+    //run the command with popen
+    FILE *fd = fopen(path, "r");
+
+    //read output of the command into a buffer
+    char *buffer = malloc(size);
+    fread(buffer, 1, size, fd);
+
+    //format the response headers and ls output
+    char *response = format_response(HTTP_OK, content_type, NULL, size);
+    write(new_sd, response, strlen(response));
+    free(buffer);
+    write(new_sd, buffer, size);
+    fprintf(stderr, "response is %s", response);
+}
+
+int ends_in_cgi(const char *path)
+{
+    if (strstr(&path[strlen(path) - 4], ".cgi") != NULL)
+        return 1;
+    return 0;
+}
+
+int ends_in_html(const char *path)
+{
+    if (strstr(&path[strlen(path) - 5], ".html") != NULL)
+        return 1;
+    return 0;
+}
+
+
+//
+int img_checker(const char *path)
+{
+  // Check to see whether it is an image or not
+  if (strstr(&path[strlen(path)-4], ".jpg") != NULL)
+  {
+    return JPEG;
+          
+  }
+  else if (strstr(&path[strlen(path)-5], ".jpeg") != NULL)
+  {
+    return JPEG;
+  }
+  else if (strstr(&path[strlen(path)-4], ".gif") != NULL)
+  {
+    return GIF;
+  }
+  else
+    return 0;
+}
 //currently mostly copied from the given tcp source files
 int main (int argc, const char *argv[])
 {
@@ -112,14 +199,16 @@ int main (int argc, const char *argv[])
 
     if (fork () == 0) 
     {   
+      close (sd);
+
+      struct stat statbuf;
       char *cwd = malloc(PATH_MAX);
       getcwd(cwd, PATH_MAX);
       char request[8000];
       char version[8000];
       char method[100];
       char *fullpath = malloc(PATH_MAX);
-
-      close (sd);
+      int img_type;
 
       read (new_sd, &data, 8000); 
 
@@ -127,7 +216,7 @@ int main (int argc, const char *argv[])
 
       sprintf(fullpath, "%s%s", cwd, request);
       printf("request is %s\n", request);
-      fprintf(stderr, "%s\n", method);
+      fprintf(stderr, "%s\n", fullpath);
 
       if (strcmp(method, "GET") != 0)
       {
@@ -139,7 +228,7 @@ int main (int argc, const char *argv[])
           exit(0);
       }
 
-      struct stat statbuf;
+
       if (stat(fullpath, &statbuf) < 0)
       {
         //errno breaks this for some reason
@@ -162,7 +251,7 @@ int main (int argc, const char *argv[])
 
         exit(0);
       }
-      if (S_ISDIR(statbuf.st_mode))
+      else if (S_ISDIR(statbuf.st_mode))
       {
         //create a string for hte ls command
         char *cmd = malloc(PATH_MAX + 6);
@@ -179,6 +268,36 @@ int main (int argc, const char *argv[])
         char *response = format_response(HTTP_OK, content_plain, buffer, strlen(buffer));
         write(new_sd, response, strlen(response));
         free(buffer);
+      }
+      else if (ends_in_cgi(fullpath))
+      {
+        handle_cgi(fullpath, new_sd);
+      }
+      else if (ends_in_html(fullpath))
+      {
+        handle_html(fullpath, new_sd, statbuf.st_size);
+      }
+      else if ((img_type = img_checker(fullpath)) != 0)
+      {
+        const char *content_type;
+        switch (img_type){
+            case JPEG:
+                fprintf(stderr, "it's a jpeg\n");
+
+                content_type = content_jpeg;
+                break;
+            case GIF:
+                fprintf(stderr, "it's a gif\n");
+                content_type = content_gif;
+                break;
+            default:
+                write(2, "fdkafhjdsa\n", 15);
+                fprintf(stderr, "%s\n", "something went wrong");
+                abort();
+        write(2, "fdkafhjdsa\n", 15);
+        handle_img(fullpath, new_sd, statbuf.st_size, content_type);
+
+        }
       }
       //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
       //  perror("error writing response to socket");
