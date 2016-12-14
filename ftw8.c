@@ -40,20 +40,20 @@ main(int argc, char *argv[])
 	ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
 	if (ntot == 0)
 		ntot = 1;		/* avoid divide by 0; print 0 for all counts */
-	printf("Regular %7ld, %5.2f %%\n", nreg,
-	  nreg*100.0/ntot);
-	printf("directories %7ld, %5.2f %%\n", ndir,
-	  ndir*100.0/ntot);
-	printf("block %7ld, %5.2f %%\n", nblk,
-	  nblk*100.0/ntot);
-	printf("char special %7ld, %5.2f %%\n", nchr,
-	  nchr*100.0/ntot);
-	printf("FIFOs %7ld, %5.2f %%\n", nfifo,
-	  nfifo*100.0/ntot);
-	printf("symbolic links %7ld, %5.2f %%\n", nslink,
-	  nslink*100.0/ntot);
-	printf("sockets %7ld, %5.2f %%\n", nsock,
-	  nsock*100.0/ntot);
+	printf("regular %ld\n", nreg);
+	  //nreg*100.0/ntot); this is %f
+	printf("directory %ld\n", ndir);
+	  //ndir*100.0/ntot);
+	printf("block %ld\n", nblk);
+	  // nblk*100.0/ntot);
+	printf("character %ld\n", nchr);
+	  // nchr*100.0/ntot);
+	printf("fifo %ld\n", nfifo);
+	  // nfifo*100.0/ntot);
+	printf("link %ld\n", nslink);
+	  // nslink*100.0/ntot);
+	printf("socket %ld\n", nsock);
+	  // nsock*100.0/ntot);
 	exit(ret);
 }
 
