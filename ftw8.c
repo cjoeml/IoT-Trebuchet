@@ -40,6 +40,8 @@ main(int argc, char *argv[])
 	ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
 	if (ntot == 0)
 		ntot = 1;		/* avoid divide by 0; print 0 for all counts */
+
+	printf("set boxwidth 0.5\nset style fill solid\nset xlabel Files\nset ylabel Frequency\nset title \"Frequency of File Types\"\n");
 	printf("regular %ld\n", nreg);
 	  //nreg*100.0/ntot); this is %f
 	printf("directory %ld\n", ndir);
