@@ -17,6 +17,8 @@
 //const char *basic_response = "HTTP-Version: HTTP/1.1 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
 
 const char *response_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\nContent-Type: %s\r\n\n%s";
+const char *cgi_response_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\n";
+
 const char *header_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\nContent-Type: %s\r\n\n";
 
 const char *request_template = "%s %s HTTP/%s\n%s";
@@ -38,6 +40,13 @@ const char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
 void SIGCHLD_handler(int sig)
 {
     waitpid(-1, NULL, WNOHANG);
+}
+
+//we weren't getting segfault output for some reason
+void SIGSEGV_handler(int sig)
+{
+    fprintf(stderr, "segfault lol\n");
+    exit(1);
 }
 
 char *format_response(const char* status, const char *content_type, void *content, int content_length)
@@ -71,12 +80,22 @@ void handle_cgi(const char *cmd, int new_sd)
 
     //read output of the command into a buffer
     char *buffer = malloc(8000);
-    fread(buffer, 1, 8000, fd);
+    int count = fread(buffer, 1, 8000, fd);
+    write(2, buffer, count);
 
-    //format the response headers and ls output
-    char *response = format_response(HTTP_OK, content_plain, buffer, strlen(buffer));
-    write(new_sd, response, strlen(response));
+    //get length of content not including content type\n\n
+    int length = count - (strstr(buffer, "\n") - buffer) - 2;
+
+    char *header = malloc(8000);
+    sprintf(header, cgi_response_template, HTTP_OK, length);
+
+    write(new_sd, header, strlen(header));
+    write(new_sd, buffer, count);
+    fprintf(stderr, "handling cgi");
+    fprintf(stderr, "content length should be %i", strlen(buffer) - strlen("Content-type: text/plain\n\n"));
+    fprintf(stderr, "content length is %i", length);
     free(buffer);
+    exit(0);
 }
 
 void handle_html(const char *path, int new_sd, size_t size)
@@ -164,10 +183,21 @@ int main (int argc, const char *argv[])
   socklen_t cli_len;
 
   struct sigaction sigchld_action;
+  struct sigaction sigsegv_action;
+
 
   sigchld_action.sa_handler = SIGCHLD_handler;
   sigemptyset(&sigchld_action.sa_mask);
   sigchld_action.sa_flags = SA_RESTART;
+
+
+  sigsegv_action.sa_handler = SIGSEGV_handler;
+  sigemptyset(&sigsegv_action.sa_mask);
+  sigsegv_action.sa_flags = SA_RESTART;
+
+  sigaction(SIGCHLD, &sigchld_action, NULL);
+  sigaction(SIGSEGV, &sigsegv_action, NULL);
+
 
   if (argv[1] == NULL)
   {
@@ -246,9 +276,10 @@ int main (int argc, const char *argv[])
       // CHECK HERE FOR SEPARATING ARGS WITH QUESTION MARKS 
       // seperates potential (?) args from request
       char *line = strdup(request);
+      char *req;
       if (strstr(request, "?") != NULL)    
       {
-        char *req = strtok(line, "?");
+        req = strtok(line, "?");
         char *req_args = strtok(NULL, "?");
         strcpy(request, req);
         strcpy(req2, req_args);
@@ -268,8 +299,7 @@ int main (int argc, const char *argv[])
           close(new_sd);
           exit(0);
       }
-
-
+    
       if (stat(fullpath, &statbuf) < 0)
       {
         //errno breaks this for some reason
@@ -292,8 +322,21 @@ int main (int argc, const char *argv[])
 
         exit(0);
       }
-      else if (S_ISDIR(statbuf.st_mode))
+      else
       {
+
+        if (strcmp(request, "/") == 0 || (req != NULL && strcmp(req, "/") == 0))
+        {
+
+            stat("index.html", &statbuf);
+            handle_html("index.html", new_sd, statbuf.st_size);
+            exit(0);
+        }
+      }
+
+      if (S_ISDIR(statbuf.st_mode))
+      {
+
         //create a string for hte ls command
         char *cmd = malloc(PATH_MAX + 6);
         sprintf(cmd, "ls -l %s", fullpath);
