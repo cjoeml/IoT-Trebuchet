@@ -29,6 +29,7 @@ int
 main(int argc, char *argv[])
 {
 	int		ret;
+	fprintf(stdout, "%s\n\n", "Content-type: text/plain");
 
 	if (argc != 2) {
 		printf("usage:  ftw  <starting-pathname>");
@@ -42,6 +43,7 @@ main(int argc, char *argv[])
 		ntot = 1;		/* avoid divide by 0; print 0 for all counts */
 
 	FILE *pipe = popen("gnuplot -persist", "w");
+
 	//printf("set boxwidth 0.5\nset style fill solid\nset key off\nset yrange [0:*]\nset xlabel \"Files\"\nset ylabel \"Frequency\"\nset title \"Frequency of File Types\"\n");
 	//printf("set term gif\nset output 'testhist2.gif'\n");
 	fprintf(pipe, "set term gif\nset output 'testhist3.gif'\nset title 'File Type Counts'\nset xlabel 'File Types'\nset ylabel 'Count'\nset boxwidth 0.5\nset style fill solid\nset key off\nset yrange [0:*]\n");
