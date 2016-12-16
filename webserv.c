@@ -34,7 +34,6 @@ const char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
 #define JPEG 1
 #define GIF 2
 
-
 //when a child process exits, handle it
 void SIGCHLD_handler(int sig)
 {
@@ -237,10 +236,24 @@ int main (int argc, const char *argv[])
       char method[100];
       char *fullpath = malloc(PATH_MAX);
       int img_type;
+      char req2[8000];
 
       read (new_sd, &data, 8000); 
 
       sscanf(data, request_template, method, request, version);
+
+
+      // CHECK HERE FOR SEPARATING ARGS WITH QUESTION MARKS 
+      // seperates potential (?) args from request
+      char *line = strdup(request);
+      if (strstr(request, "?") != NULL)    
+      {
+        char *req = strtok(line, "?");
+        char *req_args = strtok(NULL, "?");
+        strcpy(request, req);
+        strcpy(req2, req_args);
+      }
+      printf("req2 is %s\n", req2);
 
       sprintf(fullpath, "%s%s", cwd, request);
       printf("request is %s\n", request);
