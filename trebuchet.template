@@ -23,6 +23,8 @@
         //take new picture
         dummy.src = "/trebuchet.cgi";
         //update the picture
+        document.getElementById("preview").src = "";
+
         document.getElementById("preview").src = "last_img.jpg";
 
     }
