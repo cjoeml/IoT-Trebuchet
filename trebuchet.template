@@ -38,7 +38,7 @@
 
     <button onclick="refresh()">Refresh Image</button>
 
-    <img id="preview" src="last_img.jpg"/>
+    <img id="preview" src="last_img.jpg" style="max-height: 1000px; max-width: 1000px;"/>
 
 </body>
 </html>
