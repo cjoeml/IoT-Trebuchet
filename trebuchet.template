@@ -1,0 +1,44 @@
+<html>
+<head>
+<title> The Ultimate IoT Siege Weapon</title>
+<script type="text/javascript">
+    var dummy = document.createElement("img");
+
+    function windDown(){
+        dummy.src = "/windDown.cgi";
+    }
+    function windUp(){
+        dummy.src = "/windUp.cgi";
+    }
+    function lock(){
+        dummy.src = "/lock.cgi";
+    }
+    function release(){
+        dummy.src = "/release.cgi";
+    }
+    function stop(){
+        dummy.src = "/stop.cgi";
+    }
+    function refresh(){
+        //take new picture
+        dummy.src = "/trebuchet.cgi";
+        //update the picture
+        document.getElementById("preview").src = "last_img.jpg";
+
+    }
+</script>
+</head>
+<body>
+    <h> Controls:</h>
+    <button onclick="windDown()">Wind Down</button>
+    <button onclick="stop()">STOP</button>
+    <button onclick="windUp()">Wind Up</button>
+    <button onclick="lock()">Lock</button>
+    <button onclick="release()">Release</button>
+
+    <button onclick="refresh()">Refresh Image</button>
+
+    <img id="preview" src="last_img.jpg"/>
+
+</body>
+</html>
