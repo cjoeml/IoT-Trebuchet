@@ -29,8 +29,8 @@ int
 main(int argc, char *argv[])
 {
 	int		ret;
-	fprintf(stdout, "%s\n\n", "Content-type: text/plain");
-	fprintf(stdout, "argv1=%s\n", argv[1]);
+	fprintf(stdout, "%s\n\n", "Content-type: text/html");
+	//fprintf(stdout, "argv1=%s\n", argv[1]);
 
 	if (argc != 2) {
 		printf("usage:  ftw  <starting-pathname>");
@@ -49,7 +49,7 @@ main(int argc, char *argv[])
 		char c_dir[500];
 		getcwd(c_dir, PATH_MAX);
 		sprintf(c_dir, "%s/", c_dir);
-		fprintf(stdout, "c_dir: %s/%s\n", c_dir, argument);
+		//fprintf(stdout, "c_dir: %s/%s\n", c_dir, argument);
 		strcpy(argument, c_dir);
 	}
 
@@ -85,6 +85,16 @@ main(int argc, char *argv[])
 	fprintf(pipe, "socket %ld\n", nsock);
 	  // nsock*100.0/ntot);
 	fprintf(pipe, "e");
+
+	char str[999];
+	FILE * file;
+	file = fopen( "hist_template" , "r");
+	if (file) {
+	    while (fscanf(file, "%s", str)!=EOF)
+	        fprintf(stdout, "%s \n",str);
+	    fclose(file);
+	}
+
 	exit(ret);
 }
 

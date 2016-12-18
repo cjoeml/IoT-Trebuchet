@@ -78,7 +78,7 @@ void handle_cgi(const char *cmd, int new_sd, char *params)
     char cmd_buff[8000];
     //run the command with popen
     sprintf(cmd_buff, "%s %s", cmd, params);
-    fprintf(stderr, "CMD_BUFF: %s\n", cmd_buff);
+    //fprintf(stderr, "CMD_BUFF: %s\n", cmd_buff);
     FILE *fd = popen(cmd_buff, "r");
 
     //read output of the command into a buffer
@@ -94,9 +94,9 @@ void handle_cgi(const char *cmd, int new_sd, char *params)
 
     write(new_sd, header, strlen(header));
     write(new_sd, buffer, count);
-    fprintf(stderr, "handling cgi\n");
-    fprintf(stderr, "BUFFER: %s\n", buffer);
-    fprintf(stderr, "content length should be %i\n", strlen(buffer) - strlen("Content-type: text/plain\n\n"));
+    //fprintf(stderr, "handling cgi\n");
+    //fprintf(stderr, "BUFFER: %s\n", buffer);
+    fprintf(stderr, "\ncontent length should be %i\n", strlen(buffer) - strlen("Content-type: text/plain\n\n"));
     fprintf(stderr, "content length is %i\n", length);
     free(buffer);
     exit(0);
