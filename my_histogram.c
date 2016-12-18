@@ -30,13 +30,33 @@ main(int argc, char *argv[])
 {
 	int		ret;
 	fprintf(stdout, "%s\n\n", "Content-type: text/plain");
+	fprintf(stdout, "argv1=%s\n", argv[1]);
 
 	if (argc != 2) {
 		printf("usage:  ftw  <starting-pathname>");
 		exit(0);
 	}
 
-	ret = myftw(argv[1], myfunc);		/* does it all */
+	char *argument = argv[1];
+
+	if (strstr(argument, "directory=") != NULL)
+	{
+		argument = strstr(argument, "=")+1;
+	}
+
+	if (argument[0] != '/')
+	{
+		char c_dir[500];
+		getcwd(c_dir, PATH_MAX);
+		sprintf(c_dir, "%s/", c_dir);
+		fprintf(stdout, "c_dir: %s/%s\n", c_dir, argument);
+		strcpy(argument, c_dir);
+	}
+
+	//printf("argv[1]: %s", argv[1]);
+	//printf("ARG: %s", argument);
+
+	ret = myftw(argument, myfunc);		/* does it all */
 
 	ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
 	if (ntot == 0)

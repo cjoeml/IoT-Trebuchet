@@ -73,10 +73,13 @@ char *basic_html_response(const char *status, const char *input_string)
   return response_output;
 }
 
-void handle_cgi(const char *cmd, int new_sd)
+void handle_cgi(const char *cmd, int new_sd, char *params)
 {
+    char cmd_buff[8000];
     //run the command with popen
-    FILE *fd = popen(cmd, "r");
+    sprintf(cmd_buff, "%s %s", cmd, params);
+    fprintf(stderr, "CMD_BUFF: %s\n", cmd_buff);
+    FILE *fd = popen(cmd_buff, "r");
 
     //read output of the command into a buffer
     char *buffer = malloc(8000);
@@ -91,9 +94,10 @@ void handle_cgi(const char *cmd, int new_sd)
 
     write(new_sd, header, strlen(header));
     write(new_sd, buffer, count);
-    fprintf(stderr, "handling cgi");
-    fprintf(stderr, "content length should be %i", strlen(buffer) - strlen("Content-type: text/plain\n\n"));
-    fprintf(stderr, "content length is %i", length);
+    fprintf(stderr, "handling cgi\n");
+    fprintf(stderr, "BUFFER: %s\n", buffer);
+    fprintf(stderr, "content length should be %i\n", strlen(buffer) - strlen("Content-type: text/plain\n\n"));
+    fprintf(stderr, "content length is %i\n", length);
     free(buffer);
     exit(0);
 }
@@ -355,7 +359,7 @@ int main (int argc, const char *argv[])
       }
       else if (ends_in_cgi(fullpath))
       {
-        handle_cgi(fullpath, new_sd);
+        handle_cgi(fullpath, new_sd, req2);
       }
       else if (ends_in_html(fullpath))
       {
