@@ -14,77 +14,84 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
-//const char *basic_response = "HTTP-Version: HTTP/1.1 200 OK\nContent-Length: 80\nContent-Type: text/html\n\n<html><head><title>It works</title></head><body><p>kinda works</p></body></html>";
-
+// Format-string templates for reading writing HTTP requests/responses
 const char *response_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\nContent-Type: %s\r\n\n%s";
 const char *cgi_response_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\n";
-
 const char *header_template = "HTTP/1.1 %s\r\nContent-Length: %i\r\nContent-Type: %s\r\n\n";
-
 const char *request_template = "%s %s HTTP/%s\n%s";
+
+// Template for simple output from CGI scripts as an HTML page
 const char *html_template = "<html><head><title>webserv</title></head><body><p>%s</p></body></html>";
 
+// HTTP content type constants
 const char *content_plain = "text/plain";
 const char *content_html = "text/html";
 const char *content_gif = "image/gif";
 const char *content_jpeg = "image/jpeg";
 
+// HTTP response code constants
 const char *HTTP_OK = "200 OK";
 const char *HTTP_NOTFOUND = "404 Not Found";
 const char *HTTP_NOTIMPLEMENTED = "501 Not Implemented";
 
+// Enum values for determining how to output images
 #define JPEG 1
 #define GIF 2
 
-//when a child process exits, handle it
+// Handler for SIGCHLD to prevent zombie processes
 void SIGCHLD_handler(int sig)
 {
     waitpid(-1, NULL, WNOHANG);
 }
 
-//we weren't getting segfault output for some reason
+// Segfault handler since forking can cause issues with child processes
+// Not displaying segfault information
 void SIGSEGV_handler(int sig)
 {
     fprintf(stderr, "segfault lol\n");
     exit(1);
 }
 
+// Formats and returns an HTTP response for some given content
 char *format_response(const char* status, const char *content_type, void *content, int content_length)
 {
   char *response_output = malloc(8000);
+
   sprintf(response_output, response_template, status, content_length, content_type, content);
   return response_output;
 }
 
+// Formats and returns an HTTP response header for some given content
 char *format_header(const char* status, const char *content_type, int content_length)
 {
   char *response_output = malloc(8000);
+
   sprintf(response_output, header_template, status, content_length, content_type);
   return response_output;
 }
 
+// Formats and returns a basic HTTP page containing the given string
 char *basic_html_response(const char *status, const char *input_string)
 {
-
   char html_output[8000];
+
   sprintf(html_output, html_template, input_string);
   char *response_output = format_response(status, content_html, html_output, strlen(html_output));
-  //printf("\n%s\nlen: %zu\n",response_output, strlen(html_output));
   return response_output;
 }
 
+// Executes the given cgi script and returns its output as an HTML page
 void handle_cgi(const char *cmd, int new_sd, char *params)
 {
     char cmd_buff[8000];
+
     //run the command with popen
     sprintf(cmd_buff, "%s %s", cmd, params);
-    //fprintf(stderr, "CMD_BUFF: %s\n", cmd_buff);
     FILE *fd = popen(cmd_buff, "r");
 
     //read output of the command into a buffer
     char *buffer = malloc(8000);
     int count = fread(buffer, 1, 8000, fd);
-    write(2, buffer, count);
 
     //get length of content not including content type\n\n
     int length = count - (strstr(buffer, "\n") - buffer) - 2;
@@ -94,14 +101,11 @@ void handle_cgi(const char *cmd, int new_sd, char *params)
 
     write(new_sd, header, strlen(header));
     write(new_sd, buffer, count);
-    //fprintf(stderr, "handling cgi\n");
-    //fprintf(stderr, "BUFFER: %s\n", buffer);
-    fprintf(stderr, "\ncontent length should be %i\n", strlen(buffer) - strlen("Content-type: text/plain\n\n"));
-    fprintf(stderr, "content length is %i\n", length);
     free(buffer);
     exit(0);
 }
 
+// Reads in an HTML page from the file system and writes it out to the socket
 void handle_html(const char *path, int new_sd, size_t size)
 {
     //run the command with popen
@@ -117,21 +121,15 @@ void handle_html(const char *path, int new_sd, size_t size)
     free(buffer);
 }
 
-
+// Reads in an image, creates a valid response header, and writes the output to the socket
 void handle_img(const char *path, int new_sd, size_t size, const char *content_type)
 {
-    //run the command with popen
     int fd = open(path, O_RDONLY);
 
-    //format the response headersi
+    //format the response headers
     char *response = format_header(HTTP_OK, content_type, size);
     write(new_sd, response, strlen(response));
 
-
-    //if (sendfile(new_sd, fd, NULL, size) < size)
-    //{
-    //    exit(0);
-    //}
     char* buffer = malloc(size);
     read(fd, buffer, size);
     write(new_sd, buffer, size);
@@ -139,10 +137,9 @@ void handle_img(const char *path, int new_sd, size_t size, const char *content_t
 
     close(new_sd);
     exit(0);
-
-    //fprintf(stderr, "response is %s", response);
 }
 
+// Returns a boolean indicating whether or not a path points to a cgi file
 int ends_in_cgi(const char *path)
 {
     if (strstr(&path[strlen(path) - 4], ".cgi") != NULL)
@@ -150,6 +147,7 @@ int ends_in_cgi(const char *path)
     return 0;
 }
 
+// Returns a boolean indicating whether or not a path points to an HTML file
 int ends_in_html(const char *path)
 {
     if (strstr(&path[strlen(path) - 5], ".html") != NULL)
@@ -158,7 +156,8 @@ int ends_in_html(const char *path)
 }
 
 
-//
+// Determines what type of image is pointed to by the path
+// returns JPEG for jpegs, GIF for gifs
 int img_checker(const char *path)
 {
   // Check to see whether it is an image or not
@@ -178,22 +177,22 @@ int img_checker(const char *path)
   else
     return 0;
 }
-//currently mostly copied from the given tcp source files
+
 int main (int argc, const char *argv[])
 {
+  //Initialize networking
   int sd, new_sd;
   struct sockaddr_in name, cli_name;
   int sock_opt_val = 1;
   socklen_t cli_len;
 
+  //Set up signal handlers
   struct sigaction sigchld_action;
   struct sigaction sigsegv_action;
-
 
   sigchld_action.sa_handler = SIGCHLD_handler;
   sigemptyset(&sigchld_action.sa_mask);
   sigchld_action.sa_flags = SA_RESTART;
-
 
   sigsegv_action.sa_handler = SIGSEGV_handler;
   sigemptyset(&sigsegv_action.sa_mask);
@@ -216,7 +215,6 @@ int main (int argc, const char *argv[])
     exit(1);
   }
 
-  //should dynamically allocate this or better manage reading multiple times
   char data[8000]; 
   
   if ((sd = socket (AF_INET, SOCK_STREAM, 0)) < 0) // Create the socket here and set to sd (socket descriptor)
@@ -248,7 +246,7 @@ int main (int argc, const char *argv[])
   {
     cli_len = sizeof (cli_name);
 
-    // I think that this copies sockaddr name and its contents to make new_sd
+    // I̶ ̶t̶h̶i̶n̶k̶ ̶t̶h̶a̶t̶ this copies sockaddr name and its contents to make new_sd
     new_sd = accept (sd, (struct sockaddr *) &cli_name, &cli_len); 
     printf ("Assigning new socket descriptor:  %d\n", new_sd);
 
@@ -277,7 +275,6 @@ int main (int argc, const char *argv[])
       sscanf(data, request_template, method, request, version);
 
 
-      // CHECK HERE FOR SEPARATING ARGS WITH QUESTION MARKS 
       // seperates potential (?) args from request
       char *line = strdup(request);
       char *req;
@@ -288,12 +285,12 @@ int main (int argc, const char *argv[])
         strcpy(request, req);
         strcpy(req2, req_args);
       }
-      printf("req2 is %s\n", req2);
 
+      //form the full path to the requested resource and log it
       sprintf(fullpath, "%s%s", cwd, request);
-      printf("request is %s\n", request);
       fprintf(stderr, "%s\n", fullpath);
 
+      //webserv only handles get requests
       if (strcmp(method, "GET") != 0)
       {
           fprintf(stderr, "not a get");
@@ -304,31 +301,21 @@ int main (int argc, const char *argv[])
           exit(0);
       }
     
+      //check that the file actually exists
       if (stat(fullpath, &statbuf) < 0)
       {
-        //errno breaks this for some reason
-        //if (errno == ENOENT)
-        //{
-
             char *response = basic_html_response(HTTP_NOTFOUND, "404 resource not found");
-            //fprintf(stderr, "response is:\n%s\nwith a length of %i\n", response, strlen(response));
             if (write(new_sd, response, strlen(response)) < 0)
             {
               perror("Write to socket failed");
             }
 
-        //}
         fprintf(stderr, "failed stat for %s", request);
-        //perror("\nfdslkahfdlsj");
-
-        //if (write (new_sd, basic_response, strlen(basic_response)) < 0)
-        //      perror("error writing response to socket");
-
         exit(0);
       }
       else
       {
-
+        //special case to return the index for accessing the root directory of the site
         if (strcmp(request, "/") == 0 || (req != NULL && strcmp(req, "/") == 0))
         {
 
@@ -337,11 +324,10 @@ int main (int argc, const char *argv[])
             exit(0);
         }
       }
-
+ 
       if (S_ISDIR(statbuf.st_mode))
       {
-
-        //create a string for hte ls command
+        //create a string for the ls command
         char *cmd = malloc(PATH_MAX + 6);
         sprintf(cmd, "ls -l %s", fullpath);
 
